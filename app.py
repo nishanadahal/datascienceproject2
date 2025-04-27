@@ -101,51 +101,69 @@ def get_city_temperature(city):
 
 
 # Load CSV data, take average for a city, and convert to Fahrenheit
-def load_and_transform_csv():
-    # Extract
-    df = pd.read_csv('world_temps.csv')
-
-    # Transform
-    # Select only the month columns and convert them to numeric
-    month_columns = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+def load_and_transform_csv(csv_path='world_temps.csv'):
+    try:
+        df = pd.read_csv(csv_path, delimiter=',', encoding='utf-8')  # Adjust delimiter/encoding if needed
+    except Exception as e:
+        print(f"Error reading CSV file: {e}")
+        return None
+    
+    df.columns = df.columns.str.strip()
+    
+    expected_columns = ['City', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    missing_columns = [col for col in expected_columns if col not in df.columns]
+    
+    if missing_columns:
+        print(f"Warning: Missing expected columns: {', '.join(missing_columns)}")
+        return None
+    
+    month_columns = expected_columns[1:]  # Skip 'City' column and focus on the months
+    
     for month in month_columns:
-        df[month] = pd.to_numeric(df[month], errors='coerce')  # make sure they're numbers
-
-    # Calculate average temperature in Celsius
-    df['AvgTemperatureC'] = df[month_columns].mean(axis=1)
-
-    # Convert Celsius to Fahrenheit
-    df['AvgTemperatureF'] = df['AvgTemperatureC'] * 9 / 5 + 32
-
-    # Keep only necessary columns
-    result = df[['Country', 'City', 'AvgTemperatureF']]
-
-    # Clean city names (optional but good)
-    result['City'] = result['City'].str.strip().str.title()
-
-    return result
+        # The values in the month columns are in the format: "11.2 (55.7)"
+        def extract_fahrenheit(temp_str):
+            # Regex to match the pattern "Celsius (Fahrenheit)"
+            match = re.match(r'([+-]?[0-9]*\.?[0-9]+)\s?\(([-+]?[0-9]*\.?[0-9]+)\)', temp_str)
+            if match:
+                fahrenheit = float(match.group(2))  # Only extract Fahrenheit (the number inside parentheses)
+                return fahrenheit
+            else:
+                return None  # If it doesn't match, return None
+        
+        fahrenheit_values = df[month].apply(extract_fahrenheit)
+        
+        df[f'{month}_F'] = fahrenheit_values
+    
+    df['AvgTemperatureF'] = df[[f'{month}_F' for month in month_columns]].mean(axis=1)
+    
+    df['City'] = df['City'].str.strip().str.title()
+    
+    df = df.dropna(subset=['City', 'AvgTemperatureF'])
+    
+    return df
 
 
 # Find a city with an opposite temperature based on conditions
 def find_opposite_temperature_city(city_temperature):
     df = load_and_transform_csv()
 
-    if city_temperature >= 60:
-        # Find cities with average temperature < 40°C
+  if city_temperature >= 60:
+        # Find cities with average temperature < 40°F
         opposite_city_df = df[df['AvgTemperatureF'] < 40]
     else:
-        # Find cities with average temperature > 60°C
+        # Find cities with average temperature > 60°F
         opposite_city_df = df[df['AvgTemperatureF'] > 60]
-
-    # Ensure we have at least one opposite city to choose from
+    
     if not opposite_city_df.empty:
+        # Sample one random city from the filtered DataFrame
         opposite_city = opposite_city_df.sample(n=1)
-        country = opposite_city['Country'].values[0]
+        country = opposite_city['Country'].values[0]  # Assuming 'Country' column exists
         city = opposite_city['City'].values[0]
         temp = opposite_city['AvgTemperatureF'].values[0]
-        return f"{city},{country} (Avg Temp: {temp:.1f}°F)"
-
+        return f"{city}, {country} (Avg Temp: {temp:.1f}°F)"
+    
     return "Sorry, no suitable opposite temperature city found."
+
 
 
 @app.route('/clear')
