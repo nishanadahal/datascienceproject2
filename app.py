@@ -93,11 +93,31 @@ def get_city_temperature(city):
         print(f"Error fetching weather data: {e}")
         return None
 
-# Load the CSV data into memory for querying
-def load_csv_data():
-    # Assuming CSV is formatted like this: Region, Country, State, City, Month, Day, Year, AvgTemperature
-    df = pd.read_csv('weather_data.csv')
-    return df
+# Load CSV data, take average for a city, and convert to Fahrenheit 
+def load_and_transform_csv():
+    # Extract
+    df = pd.read_csv('world_temps.csv')
+
+    # Transform
+    # Select only the month columns and convert them to numeric
+    month_columns = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    for month in month_columns:
+        df[month] = pd.to_numeric(df[month], errors='coerce')  # make sure they're numbers
+
+    # Calculate average temperature in Celsius
+    df['AvgTemperatureC'] = df[month_columns].mean(axis=1)
+
+    # Convert Celsius to Fahrenheit
+    df['AvgTemperatureF'] = df['AvgTemperatureC'] * 9/5 + 32
+
+    # Keep only necessary columns
+    result = df[['Country', 'City', 'AvgTemperatureF']]
+
+    # Clean city names (optional but good)
+    result['City'] = result['City'].str.strip().str.title()
+
+    return result
+
 
 # Find a city with an opposite temperature based on conditions
 def find_opposite_temperature_city(city_temperature):
