@@ -3,7 +3,7 @@
 {% block title %}Chatbot{% endblock %}
 
 {% block content %}
-<h1>Chat with the FlaskBot</h1>
+<h1>Chat with the WeatherBot</h1>
 
 <!-- Clear Chat Button -->
 <form action="/clear" method="get" style="margin-bottom: 10px;">
@@ -27,64 +27,112 @@
 <!-- Bot Thinking Indicator -->
 <div id="loading" style="display: none;">🤖 Thinking...</div>
 
-<!-- Styles -->
+<!-- CSS Styling -->
 <style>
+    /* Chat Page Layout */
+    h1 {
+        text-align: center;
+        color: #1a237e;
+        margin-bottom: 20px;
+        font-size: 2rem;
+    }
+
     .chat-container {
-        max-height: 400px;
+        max-height: 500px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        margin-bottom: 1em;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        background-color: #f9f9f9;
+        gap: 12px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        border: 1px solid #ddd;
+        margin-bottom: 20px;
     }
 
+    /* Chat Bubbles */
     .bubble {
-        max-width: 70%;
-        padding: 10px;
-        border-radius: 10px;
-        line-height: 1.4;
+        padding: 12px 16px;
+        border-radius: 14px;
+        max-width: 75%;
+        line-height: 1.5;
+        font-size: 1rem;
+        word-wrap: break-word;
+        animation: fadeIn 0.3s ease-in-out;
     }
 
-    .user {
-        background-color: #d1e7dd;
+    .bubble.user {
         align-self: flex-end;
-        margin-left: auto;
-        text-align: right;
+        background-color: #e3f2fd;
+        color: #0d47a1;
+        border: 1px solid #bbdefb;
     }
 
-    .bot {
-        background-color: #f8d7da;
+    .bubble.bot {
         align-self: flex-start;
-        margin-right: auto;
+        background-color: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+    }
+
+    /* Input Form */
+    form {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
     }
 
     input[type="text"] {
-        padding: 10px;
-        width: 75%;
-        border-radius: 5px;
+        flex: 1;
+        padding: 12px;
+        border-radius: 8px;
         border: 1px solid #ccc;
+        font-size: 1rem;
+    }
+
+    input[type="text"]:focus {
+        border-color: #1976d2;
+        outline: none;
     }
 
     button {
-        padding: 10px 15px;
-        margin-left: 10px;
+        padding: 12px 18px;
         background-color: #1976d2;
         color: white;
+        font-weight: bold;
         border: none;
-        border-radius: 5px;
+        border-radius: 8px;
         cursor: pointer;
+        transition: background-color 0.3s;
     }
 
     button:hover {
-        background-color: #155ab6;
+        background-color: #0d47a1;
     }
 
-    h1 {
-        margin-bottom: 10px;
+    /* Clear Chat Button (Subtle Style) */
+    form[action="/clear"] button {
+        background-color: #eeeeee;
+        color: #333;
+        border: 1px solid #ccc;
+    }
+
+    form[action="/clear"] button:hover {
+        background-color: #e0e0e0;
+    }
+
+    /* Loading Text */
+    #loading {
+        margin-top: 10px;
+        font-style: italic;
+        color: #555;
+        text-align: center;
+    }
+
+    /* Fade In Animation */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
     }
 </style>
 
@@ -100,5 +148,4 @@
         container.scrollTop = container.scrollHeight;
     };
 </script>
-
 {% endblock %}
