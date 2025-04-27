@@ -78,7 +78,7 @@ def chat():
 def clear():
     session.pop('history', None)
     return render_template('chat.html', history=[])
-
+ #idk
 # 🔹 Run app
 if __name__ == '__main__':
     app.run(debug=True)
