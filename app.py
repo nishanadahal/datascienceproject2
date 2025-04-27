@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session
+from flask import Flask, render_template, request, session, redirect, url_for
 import requests
 import re
 import pandas as pd
@@ -31,7 +31,7 @@ def home():
 
 @app.route('/about')
 def about():
-    return "This is a simple Flask app."
+    return "This is a simple Weather app."
 
 
 @app.route('/debug')
@@ -57,7 +57,7 @@ def chat():
             # Step 2: Use the CSV to find a country with opposite temperature
             opposite_city = find_opposite_temperature_city(city_temperature)
 
-            bot_reply = f"The average temperature in {city} is {city_temperature}°C. A great place to visit would be {opposite_city} for a completely different climate!"
+            bot_reply = f"The average temperature in {city} is {city_temperature}°F. A great place to visit would be {opposite_city} for a completely different climate!"
         else:
             bot_reply = "Sorry, I couldn't identify your city. Could you please provide a city name?"
 
@@ -100,6 +100,9 @@ def get_city_temperature(city):
         return None
 
 
+csv_path = 'world_temps.csv'
+
+
 # Load CSV data, take average for a city, and convert to Fahrenheit
 def load_and_transform_csv(csv_path='world_temps.csv'):
     try:
@@ -107,18 +110,18 @@ def load_and_transform_csv(csv_path='world_temps.csv'):
     except Exception as e:
         print(f"Error reading CSV file: {e}")
         return None
-    
+
     df.columns = df.columns.str.strip()
-    
+
     expected_columns = ['City', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     missing_columns = [col for col in expected_columns if col not in df.columns]
-    
+
     if missing_columns:
         print(f"Warning: Missing expected columns: {', '.join(missing_columns)}")
         return None
-    
+
     month_columns = expected_columns[1:]  # Skip 'City' column and focus on the months
-    
+
     for month in month_columns:
         # The values in the month columns are in the format: "11.2 (55.7)"
         def extract_fahrenheit(temp_str):
@@ -129,31 +132,32 @@ def load_and_transform_csv(csv_path='world_temps.csv'):
                 return fahrenheit
             else:
                 return None  # If it doesn't match, return None
-        
+
         fahrenheit_values = df[month].apply(extract_fahrenheit)
-        
+
         df[f'{month}_F'] = fahrenheit_values
-    
+
     df['AvgTemperatureF'] = df[[f'{month}_F' for month in month_columns]].mean(axis=1)
-    
+
     df['City'] = df['City'].str.strip().str.title()
-    
+
     df = df.dropna(subset=['City', 'AvgTemperatureF'])
-    
+
     return df
 
 
 # Find a city with an opposite temperature based on conditions
 def find_opposite_temperature_city(city_temperature):
-    df = load_and_transform_csv()
 
-  if city_temperature >= 60:
+    df = load_and_transform_csv(csv_path='world_temps.csv')
+
+    if city_temperature >= 60:
         # Find cities with average temperature < 40°F
         opposite_city_df = df[df['AvgTemperatureF'] < 40]
     else:
         # Find cities with average temperature > 60°F
         opposite_city_df = df[df['AvgTemperatureF'] > 60]
-    
+
     if not opposite_city_df.empty:
         # Sample one random city from the filtered DataFrame
         opposite_city = opposite_city_df.sample(n=1)
@@ -161,16 +165,15 @@ def find_opposite_temperature_city(city_temperature):
         city = opposite_city['City'].values[0]
         temp = opposite_city['AvgTemperatureF'].values[0]
         return f"{city}, {country} (Avg Temp: {temp:.1f}°F)"
-    
+
     return "Sorry, no suitable opposite temperature city found."
 
 
-
-@app.route('/clear')
+@app.route('/clear', methods=['GET', 'POST'])
 def clear():
     session.pop('history', None)
-    return render_template('chat.html', history=[])
-
+    return redirect(url_for('chat'))
 
 if __name__ == '__main__':
     app.run(debug=True)
+
