@@ -31,7 +31,7 @@ def home():
 
 @app.route('/about')
 def about():
-    return "This is a simple Weather app."
+    return render_template('about.html', history=session.get('history', []))
 
 
 @app.route('/debug')
@@ -152,11 +152,11 @@ def find_opposite_temperature_city(city_temperature):
     df = load_and_transform_csv(csv_path='world_temps.csv')
 
     if city_temperature >= 60:
-        # Find cities with average temperature < 40°F
-        opposite_city_df = df[df['AvgTemperatureF'] < 40]
+        # Find cities with average temperature < 30°F
+        opposite_city_df = df[df['AvgTemperatureF'] < 30]
     else:
-        # Find cities with average temperature > 60°F
-        opposite_city_df = df[df['AvgTemperatureF'] > 60]
+        # Find cities with average temperature > 75°F
+        opposite_city_df = df[df['AvgTemperatureF'] > 75]
 
     if not opposite_city_df.empty:
         # Sample one random city from the filtered DataFrame
@@ -176,4 +176,5 @@ def clear():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
