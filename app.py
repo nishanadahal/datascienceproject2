@@ -1,49 +1,39 @@
 from flask import Flask, render_template, request, session
 import requests
 import re
+import pandas as pd
+import random
 
 app = Flask(__name__)
 app.secret_key = "your-secret-key"  # Required for session support
 
-# 🔧 Bot reply cleaner
 def extract_first_answer(text):
     text = text.strip()
-
-    # Remove "Bot:" or "Assistant:" anywhere
+    # Clean the response from the bot
     text = re.sub(r'\b(Bot|Assistant)\s*:\s*', '', text, flags=re.IGNORECASE)
-
-    # Remove leading tags like "OUTPUT:", "Answer:", etc.
     text = re.sub(r'^(OUTPUT|Answer)\s*:\s*', '', text, flags=re.IGNORECASE)
 
-    # Extract structured tag content
     for tag in ['RESULT', 'INST', 'ANS']:
         match = re.search(rf'\[{tag}\](.*?)\[/\s*{tag}\]', text, re.DOTALL | re.IGNORECASE)
         if match:
             return match.group(1).strip()
 
-    # Clean up junky tag artifacts
     text = re.sub(r'#?\*\[.*?\]', '', text)
-
-    # Fallback: first sentence or line
     sentence = re.split(r'[.!?]', text)[0]
     return sentence.strip()
 
-# 🔹 Home route
 @app.route('/')
 def home():
     return render_template('home.html')
 
-# 🔹 About route
 @app.route('/about')
 def about():
     return "This is a simple Flask app."
 
-# 🔹 Debug route
 @app.route('/debug')
 def debug():
-    return "This is the debug route. Everything's (hopefully) fine."
+    return "This is the debug route."
 
-# 🔹 Chat route
 @app.route('/chat', methods=['GET', 'POST'])
 def chat():
     if 'history' not in session:
@@ -51,34 +41,86 @@ def chat():
 
     if request.method == 'POST':
         user_message = request.form['message']
+        
+        # Extract the city from the user message
+        city = extract_city(user_message)  # Helper function to extract city name
 
-        # Call the bot backend
-        try:
-            api_response = requests.post(
-                'http://34.135.90.197/chat',
-                json={'message': user_message}
-            )
-            if api_response.status_code == 200:
-                data = api_response.json()
-                raw_reply = data.get('reply', "The bot didn't say anything.")
-                bot_reply = extract_first_answer(raw_reply)
-            else:
-                bot_reply = f"Bot server error: {api_response.status_code}"
-        except Exception as e:
-            bot_reply = f"Error: {e}"
-
+        if city:
+            # Step 1: Get the temperature for the city from the weather API
+            city_temperature = get_city_temperature(city)
+            
+            # Step 2: Use the CSV to find a country with opposite temperature
+            opposite_city = find_opposite_temperature_city(city_temperature)
+            
+            bot_reply = f"The average temperature in {city} is {city_temperature}°C. A great place to visit would be {opposite_city} for a completely different climate!"
+        else:
+            bot_reply = "Sorry, I couldn't identify your city. Could you please provide a city name?"
+        
         # Append to chat history
         session['history'].append({'user': user_message, 'bot': bot_reply})
         session.modified = True
 
     return render_template('chat.html', history=session.get('history', []))
 
-# 🔹 Clear chat history
+# Extract city from message using CSV file for reference
+def extract_city(message):
+    # Load the CSV data into memory
+    df = load_csv_data()
+    
+    # Check if city exists in the DataFrame
+    cities = df['City'].str.lower()
+    message_lower = message.lower()
+    
+    matching_cities = df[cities.str.contains(message_lower, na=False)]
+    
+    if not matching_cities.empty:
+        # Return the first matching city
+        return matching_cities.iloc[0]['City']
+    return None
+
+# Get city temperature from Visual Crossing API
+def get_city_temperature(city):
+    api_key = 'your_api_key_here'  # Replace with your actual API key
+    url = f'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}?key={api_key}'
+    
+    try:
+        response = requests.get(url)
+        data = response.json()
+        return data['days'][0]['temp']
+    except Exception as e:
+        print(f"Error fetching weather data: {e}")
+        return None
+
+# Load the CSV data into memory for querying
+def load_csv_data():
+    # Assuming CSV is formatted like this: Region, Country, State, City, Month, Day, Year, AvgTemperature
+    df = pd.read_csv('weather_data.csv')
+    return df
+
+# Find a city with an opposite temperature based on conditions
+def find_opposite_temperature_city(city_temperature):
+    df = load_csv_data()
+    
+    if city_temperature >= 60:
+        # Find cities with average temperature < 40°C
+        opposite_city_df = df[df['AvgTemperature'] < 40]
+    else:
+        # Find cities with average temperature > 60°C
+        opposite_city_df = df[df['AvgTemperature'] > 60]
+    
+    # Ensure we have at least one opposite city to choose from
+    if not opposite_city_df.empty:
+        opposite_city = opposite_city_df.sample(n=1)
+        country = opposite_city['Country'].values[0]
+        temp = opposite_city['AvgTemperature'].values[0]
+        return f"{country} (Avg Temp: {temp}°C)"
+    
+    return "Sorry, no suitable opposite temperature city found."
+
 @app.route('/clear')
 def clear():
     session.pop('history', None)
     return render_template('chat.html', history=[])
- #idk
-# 🔹 Run app
+
 if __name__ == '__main__':
     app.run(debug=True)
