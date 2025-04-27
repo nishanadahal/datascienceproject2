@@ -88,7 +88,7 @@ def extract_city(message):
 
 # Get city temperature from Visual Crossing API
 def get_city_temperature(city):
-    api_key = 'your_api_key_here'  # Replace with your actual API key
+    api_key = ''  # Replace with your actual API key
     url = f'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}?key={api_key}'
 
     try:
@@ -132,17 +132,18 @@ def find_opposite_temperature_city(city_temperature):
 
     if city_temperature >= 60:
         # Find cities with average temperature < 40°C
-        opposite_city_df = df[df['AvgTemperature'] < 40]
+        opposite_city_df = df[df['AvgTemperatureF'] < 40]
     else:
         # Find cities with average temperature > 60°C
-        opposite_city_df = df[df['AvgTemperature'] > 60]
+        opposite_city_df = df[df['AvgTemperatureF'] > 60]
 
     # Ensure we have at least one opposite city to choose from
     if not opposite_city_df.empty:
         opposite_city = opposite_city_df.sample(n=1)
         country = opposite_city['Country'].values[0]
-        temp = opposite_city['AvgTemperature'].values[0]
-        return f"{country} (Avg Temp: {temp}°C)"
+        city = opposite_city['City'].values[0]
+        temp = opposite_city['AvgTemperatureF'].values[0]
+        return f"{city},{country} (Avg Temp: {temp:.1f}°F)"
 
     return "Sorry, no suitable opposite temperature city found."
 
