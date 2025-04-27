@@ -64,19 +64,21 @@ def chat():
 
 # Extract city from message using CSV file for reference
 def extract_city(message):
-    # Load the CSV data into memory
     df = load_csv_data()
-    
-    # Check if city exists in the DataFrame
-    cities = df['City'].str.lower()
+
+    if 'City' not in df.columns:
+        raise ValueError("CSV does not have a 'City' column")
+
+    cities_list = df['City'].dropna().unique() 
+
     message_lower = message.lower()
-    
-    matching_cities = df[cities.str.contains(message_lower, na=False)]
-    
-    if not matching_cities.empty:
-        # Return the first matching city
-        return matching_cities.iloc[0]['City']
+
+    for city in cities_list:
+        if isinstance(city, str) and city.lower() in message_lower:
+            return city
+
     return None
+
 
 # Get city temperature from Visual Crossing API
 def get_city_temperature(city):
