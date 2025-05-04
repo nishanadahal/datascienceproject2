@@ -128,7 +128,7 @@ def extract_city(message):
 
 # Get city temperature from Visual Crossing API
 def get_city_temperature(city):
-    api_key = '9NE9ZSEBGQ9G9LPDPVNTSNZGH'  # Replace with your actual API key
+    api_key = ''  # Replace with your actual API key
     url = f'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}?key={api_key}'
 
     try:
