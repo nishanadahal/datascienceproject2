@@ -45,21 +45,61 @@ def chat():
         session['history'] = []
 
     if request.method == 'POST':
-        user_message = request.form['message']
+        user_message = request.form['message'].strip()
+        message_lower = user_message.lower()
 
-        # Extract the city from the user message
-        city = extract_city(user_message)  # Helper function to extract city name
+        # Greeting detection
+        if any(greet in message_lower for greet in ['hi', 'hello', 'hey']):
+            bot_reply = "Hi there! How can I assist you today? You can type 'help' to see what I can do."
 
-        if city:
-            # Step 1: Get the temperature for the city from the weather API
-            city_temperature = get_city_temperature(city)
+        elif "how are you" in message_lower:
+            bot_reply = "I'm just a bunch of code, but I'm doing great and ready to help! 😊"
 
-            # Step 2: Use the CSV to find a country with opposite temperature
-            opposite_city = find_opposite_temperature_city(city_temperature)
+        # Help command
+        elif message_lower == "help":
+            bot_reply = (
+                "Here’s what I can help with:\n"
+                "- Ask: 'What's the weather like in [city]?' to get the current average temperature.\n"
+                "- Ask: 'Where can I go for a different climate?' to get a travel suggestion.\n"
+                "- Type 'clear' to reset the conversation.\n"
+                "- Or just say 'hi' to start a chat!"
+            )
 
-            bot_reply = f"The average temperature in {city} is {city_temperature}°F. A great place to visit would be {opposite_city} for a completely different climate!"
+        # Weather request
+        elif "weather like in" in message_lower:
+            city = extract_city(user_message)
+            if city:
+                temp = get_city_temperature(city)
+                if temp is not None:
+                    bot_reply = f"The current average temperature in {city} is {temp:.1f}°F."
+                    # Save temperature for later opposite-climate query
+                    session['last_city'] = city
+                    session['last_temp'] = temp
+                else:
+                    bot_reply = f"Sorry, I couldn't fetch temperature data for {city}."
+            else:
+                bot_reply = "Sorry! You either mentioned a country or a city that I do not have access to, please mention" \
+                            " another city so I can check the weather for you."
+
+        # Opposite climate suggestion
+        elif "different climate" in message_lower:
+            # Use last known city/temp if available
+            temp = session.get('last_temp')
+            city = session.get('last_city')
+
+            if temp is not None:
+                opposite_place = find_opposite_temperature_city(temp)
+                bot_reply = f"A great place to visit for a different climate from {city} is {opposite_place}."
+            else:
+                bot_reply = "Tell me your current city first, like 'What's the weather like in Paris?'"
+
+        # Clear command
+        elif message_lower == "clear":
+            return redirect(url_for('clear'))
+
+        # Fallback
         else:
-            bot_reply = "Sorry, I couldn't identify your city. Could you please provide a city name?"
+            bot_reply = "I'm not sure how to help with that. Type 'help' to see what I can do."
 
         # Append to chat history
         session['history'].append({'user': user_message, 'bot': bot_reply})
@@ -88,7 +128,7 @@ def extract_city(message):
 
 # Get city temperature from Visual Crossing API
 def get_city_temperature(city):
-    api_key = ''  # Replace with your actual API key
+    api_key = '9NE9ZSEBGQ9G9LPDPVNTSNZGH'  # Replace with your actual API key
     url = f'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}?key={api_key}'
 
     try:
@@ -148,25 +188,24 @@ def load_and_transform_csv(csv_path='world_temps.csv'):
 
 # Find a city with an opposite temperature based on conditions
 def find_opposite_temperature_city(city_temperature):
-
     df = load_and_transform_csv(csv_path='world_temps.csv')
+    if df is None:
+        return "Sorry, I couldn't load the city temperature data."
 
     if city_temperature >= 60:
-        # Find cities with average temperature < 30°F
         opposite_city_df = df[df['AvgTemperatureF'] < 30]
     else:
-        # Find cities with average temperature > 75°F
         opposite_city_df = df[df['AvgTemperatureF'] > 75]
 
     if not opposite_city_df.empty:
-        # Sample one random city from the filtered DataFrame
         opposite_city = opposite_city_df.sample(n=1)
-        country = opposite_city['Country'].values[0]  # Assuming 'Country' column exists
         city = opposite_city['City'].values[0]
         temp = opposite_city['AvgTemperatureF'].values[0]
+        # Use 'Country' if it exists
+        country = opposite_city['Country'].values[0] if 'Country' in opposite_city.columns else "Unknown Country"
         return f"{city}, {country} (Avg Temp: {temp:.1f}°F)"
 
-    return "Sorry, no suitable opposite temperature city found."
+    return ""
 
 
 @app.route('/clear', methods=['GET', 'POST'])
@@ -176,5 +215,6 @@ def clear():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
