@@ -1,2 +1,5 @@
 Data Science Project 2
-Ask this chatbot about the weather in a specific location and how to dress accordingly.
+Ask this chatbot about the weather in a specific location and what the opposite climate is. 
+Type 'hi' or 'help' to start!
+Warning: Make sure to copy the questions directly from 'help' to get the correct answer!
+IP address: http://34.44.159.30:5000/
